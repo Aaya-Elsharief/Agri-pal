@@ -42,3 +42,16 @@ class User:
             return {"valid": False, "error": "Role must be 'farmer' or 'trader'"}
         
         return {"valid": True}
+    
+    def authenticate_user(self, username, password):
+        user = self.collection.find_one({"username": username})
+        
+        if not user:
+            return {"success": False, "error": "User not found"}
+        
+        if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+            user['_id'] = str(user['_id'])
+            user.pop('password')  # Remove password from response
+            return {"success": True, "user": user}
+        else:
+            return {"success": False, "error": "Invalid password"}
