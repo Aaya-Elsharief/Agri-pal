@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from pymongo import MongoClient
 from config import Config
+from routes.auth import auth_bp
 
 def create_app():
     app = Flask(__name__)
@@ -10,6 +11,8 @@ def create_app():
     mongo_client = MongoClient(app.config['MONGODB_URI'])
     app.db = mongo_client[app.config['MONGODB_DB']]
     
+    # Register blueprints
+    app.register_blueprint(auth_bp, url_prefix='/api/user')
     
     @app.route('/')
     def home():
