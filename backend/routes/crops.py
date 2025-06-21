@@ -49,3 +49,55 @@ def create_crop(current_user_id, current_user_role):
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/<crop_id>', methods=['PUT'])
+@verify_token
+def update_crop(current_user_id, current_user_role, crop_id):
+    if current_user_role != "farmer":
+        return jsonify({"error": "Only farmers can update crops"}), 403
+    
+    try:
+        data = request.get_json(force=True)
+    except:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    try:
+        # Check if crop exists and belongs to user
+        crop = current_app.db.crops.find_one({
+            "_id": ObjectId(crop_id),
+            "user_id": ObjectId(current_user_id)
+        })
+        
+        if not crop:
+            return jsonify({"error": "Crop not found or access denied"}), 404
+        
+        # Update crop document
+        update_data = {}
+        allowed_fields = ['crop_type', 'quantity', 'price', 'location', 'harvest_date']
+        
+        for field in allowed_fields:
+            if field in data:
+                update_data[field] = data[field]
+        
+        if update_data:
+            update_data['updated_at'] = datetime.utcnow()
+            current_app.db.crops.update_one(
+                {"_id": ObjectId(crop_id)},
+                {"$set": update_data}
+            )
+        
+        # Get updated crop
+        updated_crop = current_app.db.crops.find_one({"_id": ObjectId(crop_id)})
+        updated_crop['_id'] = str(updated_crop['_id'])
+        updated_crop['user_id'] = str(updated_crop['user_id'])
+        
+        return jsonify({
+            "message": "Crop updated successfully",
+            "crop": updated_crop
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
