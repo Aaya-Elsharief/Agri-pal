@@ -101,3 +101,24 @@ def update_crop(current_user_id, current_user_role, crop_id):
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/', methods=['GET'])
+@verify_token
+def get_crops(current_user_id, current_user_role):
+    if current_user_role != "farmer":
+        return jsonify({"error": "Only farmers can view crops"}), 403
+    
+    try:
+        crops = list(current_app.db.crops.find(
+            {"user_id": ObjectId(current_user_id)}
+        ).sort("created_at", -1))
+        
+        # Convert ObjectIds to strings
+        for crop in crops:
+            crop['_id'] = str(crop['_id'])
+            crop['user_id'] = str(crop['user_id'])
+        
+        return jsonify({"crops": crops}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
