@@ -250,3 +250,35 @@ def create_offer(current_user_id, current_user_role, crop_id):
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/<crop_id>/offers', methods=['GET'])
+@verify_token
+def get_crop_offers(current_user_id, current_user_role, crop_id):
+    if current_user_role != "farmer":
+        return jsonify({"error": "Only farmers can view crop offers"}), 403
+    
+    try:
+        # Check if crop exists and belongs to farmer
+        crop = current_app.db.crops.find_one({
+            "_id": ObjectId(crop_id),
+            "user_id": ObjectId(current_user_id)
+        })
+        
+        if not crop:
+            return jsonify({"error": "Crop not found or access denied"}), 404
+        
+        # Get all offers for this crop
+        offers = list(current_app.db.offers.find(
+            {"crop_id": ObjectId(crop_id)}
+        ).sort("offered_price", -1))
+        
+        # Convert ObjectIds to strings
+        for offer in offers:
+            offer['_id'] = str(offer['_id'])
+            offer['crop_id'] = str(offer['crop_id'])
+            offer['trader_id'] = str(offer['trader_id'])
+        
+        return jsonify({"offers": offers}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
