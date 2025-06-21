@@ -36,6 +36,13 @@ python app.py
 
 Server runs on `http://localhost:5000`
 
+## 🌐 Live Demo
+**API Base URL**: https://agri-pal-1.onrender.com
+
+**Test endpoints:**
+- Health check: https://agri-pal-1.onrender.com/health
+- Marketplace: https://agri-pal-1.onrender.com/api/crops/marketplace
+
 ## 📋 API Features
 
 ### 🔐 Authentication

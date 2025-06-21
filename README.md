@@ -41,7 +41,10 @@ Farmers can list their crops, traders can browse and submit price offers, creati
 
 ## 🚀 Quick Start
 
-### Backend API
+### 🌐 Live Demo
+**Backend API**: https://agri-pal-1.onrender.com
+
+### Local Development
 See detailed setup and API documentation in [`backend/README.md`](./backend/README.md)
 
 ```bash
