@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from pymongo import MongoClient
 from config import Config
 from routes.auth import auth_bp
+from routes.crops import crops_bp
 
 def create_app():
     app = Flask(__name__)
@@ -13,6 +14,7 @@ def create_app():
     
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/user')
+    app.register_blueprint(crops_bp, url_prefix='/api/crops')
     
     @app.route('/')
     def home():
