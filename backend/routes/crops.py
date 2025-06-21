@@ -142,3 +142,62 @@ def delete_crop(current_user_id, current_user_role, crop_id):
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/marketplace', methods=['GET'])
+def get_marketplace():
+    try:
+        # Build query filters
+        query = {}
+        
+        # Search filters from query parameters
+        crop_type = request.args.get('crop_type')
+        location = request.args.get('location')
+        min_price = request.args.get('min_price')
+        max_price = request.args.get('max_price')
+        
+        if crop_type:
+            query['crop_type'] = {'$regex': crop_type, '$options': 'i'}
+        if location:
+            query['location'] = {'$regex': location, '$options': 'i'}
+        if min_price:
+            query['price'] = query.get('price', {})
+            query['price']['$gte'] = float(min_price)
+        if max_price:
+            query['price'] = query.get('price', {})
+            query['price']['$lte'] = float(max_price)
+        
+        # Get crops with farmer info
+        pipeline = [
+            {'$match': query},
+            {'$lookup': {
+                'from': 'users',
+                'localField': 'user_id',
+                'foreignField': '_id',
+                'as': 'farmer'
+            }},
+            {'$unwind': '$farmer'},
+            {'$project': {
+                '_id': 1,
+                'crop_type': 1,
+                'quantity': 1,
+                'price': 1,
+                'location': 1,
+                'harvest_date': 1,
+                'created_at': 1,
+                'farmer.full_name': 1,
+                'farmer.phone': 1,
+                'farmer.location': 1
+            }},
+            {'$sort': {'created_at': -1}}
+        ]
+        
+        crops = list(current_app.db.crops.aggregate(pipeline))
+        
+        # Convert ObjectIds to strings
+        for crop in crops:
+            crop['_id'] = str(crop['_id'])
+        
+        return jsonify({"crops": crops}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
