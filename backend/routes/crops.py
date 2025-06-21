@@ -282,3 +282,105 @@ def get_crop_offers(current_user_id, current_user_role, crop_id):
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/offers/', methods=['GET'])
+@verify_token
+def get_offers(current_user_id, current_user_role):
+    if current_user_role != "trader":
+        return jsonify({"error": "Only traders can view their offers"}), 403
+    
+    try:
+        # Get trader's offers with crop details
+        pipeline = [
+            {'$match': {'trader_id': ObjectId(current_user_id)}},
+            {'$lookup': {
+                'from': 'crops',
+                'localField': 'crop_id',
+                'foreignField': '_id',
+                'as': 'crop'
+            }},
+            {'$unwind': '$crop'},
+            {'$sort': {'created_at': -1}}
+        ]
+        
+        offers = list(current_app.db.offers.aggregate(pipeline))
+        
+        # Convert ObjectIds to strings
+        for offer in offers:
+            offer['_id'] = str(offer['_id'])
+            offer['crop_id'] = str(offer['crop_id'])
+            offer['trader_id'] = str(offer['trader_id'])
+            offer['crop']['_id'] = str(offer['crop']['_id'])
+            offer['crop']['user_id'] = str(offer['crop']['user_id'])
+        
+        return jsonify({"offers": offers}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/offers/<offer_id>', methods=['PUT'])
+@verify_token
+def update_offer(current_user_id, current_user_role, offer_id):
+    if current_user_role != "trader":
+        return jsonify({"error": "Only traders can update offers"}), 403
+    
+    try:
+        data = request.get_json(force=True)
+    except:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    if not data or not data.get('offered_price'):
+        return jsonify({"error": "Offered price is required"}), 400
+    
+    try:
+        # Check if offer exists and belongs to trader
+        offer = current_app.db.offers.find_one({
+            "_id": ObjectId(offer_id),
+            "trader_id": ObjectId(current_user_id)
+        })
+        
+        if not offer:
+            return jsonify({"error": "Offer not found or access denied"}), 404
+        
+        # Update offer
+        current_app.db.offers.update_one(
+            {"_id": ObjectId(offer_id)},
+            {"$set": {
+                "offered_price": data['offered_price'],
+                "updated_at": datetime.utcnow()
+            }}
+        )
+        
+        # Get updated offer
+        updated_offer = current_app.db.offers.find_one({"_id": ObjectId(offer_id)})
+        updated_offer['_id'] = str(updated_offer['_id'])
+        updated_offer['crop_id'] = str(updated_offer['crop_id'])
+        updated_offer['trader_id'] = str(updated_offer['trader_id'])
+        
+        return jsonify({
+            "message": "Offer updated successfully",
+            "offer": updated_offer
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/offers/<offer_id>', methods=['DELETE'])
+@verify_token
+def delete_offer(current_user_id, current_user_role, offer_id):
+    if current_user_role != "trader":
+        return jsonify({"error": "Only traders can delete offers"}), 403
+    
+    try:
+        result = current_app.db.offers.delete_one({
+            "_id": ObjectId(offer_id),
+            "trader_id": ObjectId(current_user_id)
+        })
+        
+        if result.deleted_count == 0:
+            return jsonify({"error": "Offer not found or access denied"}), 404
+        
+        return jsonify({"message": "Offer deleted successfully"}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
