@@ -201,3 +201,52 @@ def get_marketplace():
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/<crop_id>/offer', methods=['POST'])
+@verify_token
+def create_offer(current_user_id, current_user_role, crop_id):
+    if current_user_role != "trader":
+        return jsonify({"error": "Only traders can create offers"}), 403
+    
+    try:
+        data = request.get_json(force=True)
+    except:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    
+    if not data or not data.get('offered_price'):
+        return jsonify({"error": "Offered price is required"}), 400
+    
+    try:
+        # Check if crop exists
+        crop = current_app.db.crops.find_one({"_id": ObjectId(crop_id)})
+        if not crop:
+            return jsonify({"error": "Crop not found"}), 404
+        
+        # Get trader info
+        trader = current_app.db.users.find_one(
+            {"_id": ObjectId(current_user_id)},
+            {"full_name": 1, "phone": 1}
+        )
+        
+        # Create offer document
+        offer_doc = {
+            "crop_id": ObjectId(crop_id),
+            "trader_id": ObjectId(current_user_id),
+            "offered_price": data['offered_price'],
+            "trader_name": trader['full_name'],
+            "trader_phone": trader['phone'],
+            "created_at": datetime.utcnow()
+        }
+        
+        result = current_app.db.offers.insert_one(offer_doc)
+        offer_doc['_id'] = str(result.inserted_id)
+        offer_doc['crop_id'] = str(offer_doc['crop_id'])
+        offer_doc['trader_id'] = str(offer_doc['trader_id'])
+        
+        return jsonify({
+            "message": "Offer created successfully",
+            "offer": offer_doc
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
