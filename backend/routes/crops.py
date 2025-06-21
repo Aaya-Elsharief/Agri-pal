@@ -122,3 +122,23 @@ def get_crops(current_user_id, current_user_role):
         
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
+
+@crops_bp.route('/<crop_id>', methods=['DELETE'])
+@verify_token
+def delete_crop(current_user_id, current_user_role, crop_id):
+    if current_user_role != "farmer":
+        return jsonify({"error": "Only farmers can delete crops"}), 403
+    
+    try:
+        result = current_app.db.crops.delete_one({
+            "_id": ObjectId(crop_id),
+            "user_id": ObjectId(current_user_id)
+        })
+        
+        if result.deleted_count == 0:
+            return jsonify({"error": "Crop not found or access denied"}), 404
+        
+        return jsonify({"message": "Crop deleted successfully"}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
